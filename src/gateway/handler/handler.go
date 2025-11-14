@@ -26,7 +26,7 @@ func (h *Handler) InitRouters() *gin.Engine {
 		RetryTimeout:     5 * time.Second,
 	}
 
-	router.Use(cb.NewCBMiddleware(readCB, cb.fallbackHandler))
+	router.Use(cb.NewCBMiddleware(readCB, cb.FallbackHandler))
 
 	router.GET("/manage/health", func(c *gin.Context) {
 		c.Status(http.StatusOK)

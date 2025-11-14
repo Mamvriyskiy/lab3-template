@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	modelGateway "github.com/Mamvriyskiy/lab3-template/src/gateway/model"
+	"github.com/Mamvriyskiy/lab3-template/src/gateway/rollback"
 	"github.com/gin-gonic/gin"
 )
 
@@ -340,10 +342,27 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 
 	// Покупаем билет
 	status, body, _, err := forwardRequest(c, "POST", "http://ticket:8070/ticket", headers, bodyBytes)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+	if err != nil || status >= 400 {
+		// rollback
+		_, _, _, rollbackErr := forwardRequest(c, "POST", "http://ticket:8070/ticket/rollback", headers, bodyBytes)
+		if rollbackErr != nil {
+			log.Printf("Rollback failed: %v", rollbackErr)
+		}
+
+		// ставим в Redis очередь на повтор
+		if err := rollback.EnqueueRetry(rollback.RetryRequest{
+			Method:  "POST",
+			URL:     "http://ticket:8070/ticket",
+			Headers: headers,
+			Body:    bodyBytes,
+		}); err != nil {
+			log.Printf("Failed to enqueue request: %v", err)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "queued for retry"})
 		return
 	}
+
 	uid := strings.TrimSpace(string(body))
 
 	var privilege = PrivilegeInfo{

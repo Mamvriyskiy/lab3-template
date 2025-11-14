@@ -1,6 +1,7 @@
 package circuitbreaker
 
 import (
+    "time"
 	"github.com/gin-gonic/gin"
 )
 

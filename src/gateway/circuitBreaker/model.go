@@ -1,5 +1,10 @@
 package circuitbreaker
 
+import (
+    "sync"
+    "time"
+)
+
 type CircuitBreaker struct {
     FailureCount     int
     FailureThreshold int

@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func fallbackHandler(c *gin.Context) {
+func FallbackHandler(c *gin.Context) {
     c.JSON(503, gin.H{
         "error": "Service unavailable, fallback activated",
     })
