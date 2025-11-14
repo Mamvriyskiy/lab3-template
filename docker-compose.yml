@@ -1,20 +1,64 @@
 version: "3"
 services:
   postgres:
-    image: library/postgres:13
-    container_name: postgres
+      image: library/postgres:13
+      container_name: postgres
+      restart: on-failure
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: "postgres"
+        POSTGRES_DB: postgres
+      volumes:
+        - db-data:/var/lib/postgresql/data
+        - ./postgres/db-init.sh:/docker-entrypoint-initdb.d/db-init.sh
+      ports:
+        - "5432:5432"
+        
+  gateway:
+      image: gateway
+      container_name: gateway
+      restart: on-failure
+      build:
+        context: src/gateway
+        dockerfile: Dockerfile
+      ports:
+        - "8080:8080"
+  bonus:
+    image: bonus
+    container_name: bonus
     restart: on-failure
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "postgres"
-      POSTGRES_DB: postgres
-    volumes:
-      - db-data:/var/lib/postgresql/data
-      - ./postgres/:/docker-entrypoint-initdb.d/
+    build:
+      context: src/bonus
+      dockerfile: Dockerfile
     ports:
-      - "5432:5432"
+      - "8050:8050"
+    depends_on:
+      - gateway
 
-# TODO добавить сервисы
+  flight:
+    image: flight
+    container_name: flight
+    restart: on-failure
+    build:
+      context: src/flight
+      dockerfile: Dockerfile
+    ports:
+      - "8060:8060"
+    depends_on:
+      - gateway
+
+
+  ticket:
+    image: ticket
+    container_name: ticket
+    restart: on-failure
+    build:
+      context: src/ticket
+      dockerfile: Dockerfile
+    ports:
+      - "8070:8070"
+    depends_on:
+      - gateway
 
 volumes:
   db-data:
