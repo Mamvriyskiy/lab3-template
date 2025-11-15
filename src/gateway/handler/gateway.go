@@ -190,7 +190,9 @@ func (h *Handler) GetInfoAboutUserPrivilege(c *gin.Context) {
 	headers := map[string]string{"X-User-Name": username}
 	status, body, respHeaders, err := forwardRequest(c, "GET", "http://bonus:8050/privilege", headers, nil)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+        	"message": "Bonus Service unavailable",
+    	})
 		return
 	}
 
@@ -265,7 +267,10 @@ func (h *Handler) GetInfoAboutUser(c *gin.Context) {
 
 	status, BonusBody, respHeaders, err := forwardRequest(c, "GET", "http://bonus:8050/privilege", headers, nil)
 	if err != nil {
-		c.JSON(http.StatusOK, BonusBody)
+		c.JSON(http.StatusOK, gin.H{
+			"tickets": tickets,
+			"privilege": gin.H{},
+		})
 		return
 	}
 
@@ -376,7 +381,9 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 				log.Printf("Failed to enqueue request: %v", err)
 			}
 
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "queued for retry"})
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error": "Bonus Service unavailable",
+			})
 			return
 		}
 
