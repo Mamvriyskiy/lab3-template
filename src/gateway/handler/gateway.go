@@ -382,7 +382,7 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 			}
 
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error": "Bonus Service unavailable",
+				"message": "Bonus Service unavailable",
 			})
 			return
 		}
