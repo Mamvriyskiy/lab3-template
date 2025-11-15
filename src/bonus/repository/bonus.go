@@ -18,12 +18,12 @@ func NewBonusPostgres(db *sqlx.DB) *BonusPostgres {
 	return &BonusPostgres{db: db}
 }
 
-func (r *BonusPostgres) UpdateBonusBonus(username, uid string, price int) error {
+func (r *BonusPostgres) UpdateBonusBonus(username, uid string, price int) (int, error) {
 	bonusAmount := price / 10
 
 	tx, err := r.db.Begin()
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -35,26 +35,20 @@ func (r *BonusPostgres) UpdateBonusBonus(username, uid string, price int) error 
     `, username).Scan(&privilegeID)
 
 	if err != nil {
-		return fmt.Errorf("failed to get privilege ID: %w", err)
+		return 0, fmt.Errorf("failed to get privilege ID: %w", err)
 	}
 
-	result, err := tx.Exec(`
-        UPDATE privilege 
-        SET balance = balance + $1 
-        WHERE username = $2
-    `, bonusAmount, username)
+	var updatedBalance int64
+
+	err = tx.QueryRow(`
+			UPDATE privilege
+			SET balance = balance + $1
+			WHERE username = $2
+			RETURNING balance
+		`, bonusAmount, username).Scan(&updatedBalance)
 
 	if err != nil {
-		return fmt.Errorf("failed to update bonus balance: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("user not found: %s", username)
+		return 0, fmt.Errorf("failed to update bonus balance: %w", err)
 	}
 
 	_, err = tx.Exec(`
@@ -64,14 +58,14 @@ func (r *BonusPostgres) UpdateBonusBonus(username, uid string, price int) error 
     `, privilegeID, ticketUID, time.Now(), bonusAmount, "FILL_IN_BALANCE")
 
 	if err != nil {
-		return fmt.Errorf("failed to insert into privilege history: %w", err)
+		return 0, fmt.Errorf("failed to insert into privilege history: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return nil
+	return int(updatedBalance), nil
 }
 
 func (r *BonusPostgres) GetInfoAboutUserPrivilege(username string) (model.PrivilegeResponse, error) {
@@ -165,3 +159,19 @@ func (r *BonusPostgres) UpdateBonus(username, uid string, price int) (model.Priv
 
 	return info, err
 }
+
+func (r *BonusPostgres) UpdateBonusDelete(username string, price int) error {
+    _, err := r.db.Exec(`
+        UPDATE privilege
+        SET balance = balance - $1
+        WHERE username = $2
+    `, price, username)
+	
+	print("kkkkkk", err)
+    if err != nil {
+        return fmt.Errorf("failed to subtract bonus: %w", err)
+    }
+
+    return nil
+}
+

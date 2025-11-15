@@ -356,7 +356,7 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 
 	var privilege = PrivilegeInfo{
 		Status:      "GOLD",
-		Balance:     1650,
+		Balance:     1500,
 		BalanceDiff: 0,
 	}
 
@@ -399,7 +399,7 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 	}
 
 	curlUpdateBouns := "http://bonus:8050/bonusUpdate/" + uid + "/" + strconv.Itoa(reqData.Price)
-	_, _, _, err = forwardRequest(c, "PATCH", curlUpdateBouns, headers, nil)
+	_, bodyBonus, _, err := forwardRequest(c, "PATCH", curlUpdateBouns, headers, nil)
 	if err != nil || status >= 400 {
 		// rollback
 		// _, _, _, rollbackErr := forwardRequest(c, "DELETE", "http://ticket:8070/ticket/", headers, bodyBytes)
@@ -422,6 +422,18 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 			})
 		return
 	}
+
+	type BonusResponse struct {
+		UpdatedBalance int `json:"updated_balance"`
+	}
+
+	var bonusResp BonusResponse
+	if err := json.Unmarshal(bodyBonus, &bonusResp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse bonus response"})
+		return
+	}
+	privilege.Balance = bonusResp.UpdatedBalance
+	fmt.Println(privilege.Balance)
 
 	flightNumber := reqData.FlightNumber
 
@@ -485,6 +497,8 @@ func (h *Handler) DeleteTicketUSer(c *gin.Context) {
 		return
 	}
 
+	headers := map[string]string{"X-User-Name": username}
+
 	ticketURL := "http://ticket:8070/ticket/" + ticketUid
 	status, body, _, err := forwardRequest(c, "PATCH", ticketURL, nil, nil)
 	if err != nil {
@@ -496,6 +510,10 @@ func (h *Handler) DeleteTicketUSer(c *gin.Context) {
 		c.Data(status, "application/json", body)
 		return
 	}
+
+	print("Списание бонусов")
+	curlUpdateBouns := "http://bonus:8050/bonusUpdateDelete/" + strconv.Itoa(150)
+	_, _, _, err = forwardRequest(c, "DELETE", curlUpdateBouns, headers, nil)
 
 	c.Status(http.StatusNoContent)
 }
