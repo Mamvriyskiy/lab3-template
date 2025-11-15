@@ -265,7 +265,7 @@ func (h *Handler) GetInfoAboutUser(c *gin.Context) {
 
 	status, BonusBody, respHeaders, err := forwardRequest(c, "GET", "http://bonus:8050/privilege", headers, nil)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, BonusBody)
 		return
 	}
 
@@ -361,22 +361,22 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 		statusBonus, bodyBonus, _, err := forwardRequest(c, "PATCH", curlBouns, headers, nil)
 		if err != nil || status >= 400 {
 			// rollback
-			_, _, _, rollbackErr := forwardRequest(c, "POST", "http://ticket:8070/ticket/rollback", headers, bodyBytes)
-			if rollbackErr != nil {
-				log.Printf("Rollback failed: %v", rollbackErr)
-			}
+			// _, _, _, rollbackErr := forwardRequest(c, "DELETE", "http://ticket:8070/ticket/", headers, bodyBytes)
+			// if rollbackErr != nil {
+			// 	log.Printf("Rollback failed: %v", rollbackErr)
+			// }
 
 			// ставим в Redis очередь на повтор
 			if err := rollback.EnqueueRetry(rollback.RetryRequest{
 				Method:  "POST",
-				URL:     "http://ticket:8070/ticket",
+				URL:     "http://localhost:8080/ticket",
 				Headers: headers,
 				Body:    bodyBytes,
 			}); err != nil {
 				log.Printf("Failed to enqueue request: %v", err)
 			}
 
-			c.JSON(http.StatusOK, gin.H{"status": "queued for retry"})
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "queued for retry"})
 			return
 		}
 
@@ -393,8 +393,24 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 
 	curlUpdateBouns := "http://bonus:8050/bonusUpdate/" + uid + "/" + strconv.Itoa(reqData.Price)
 	_, _, _, err = forwardRequest(c, "PATCH", curlUpdateBouns, headers, nil)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+	if err != nil || status >= 400 {
+		// rollback
+		// _, _, _, rollbackErr := forwardRequest(c, "DELETE", "http://ticket:8070/ticket/", headers, bodyBytes)
+		// if rollbackErr != nil {
+		// 	log.Printf("Rollback failed: %v", rollbackErr)
+		// }
+
+		// ставим в Redis очередь на повтор
+		if err := rollback.EnqueueRetry(rollback.RetryRequest{
+			Method:  "POST",
+			URL:     "http://localhost:8080/ticket",
+			Headers: headers,
+			Body:    bodyBytes,
+		}); err != nil {
+			log.Printf("Failed to enqueue request: %v", err)
+		}
+
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "queued for retry"})
 		return
 	}
 
