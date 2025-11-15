@@ -417,7 +417,9 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 			log.Printf("Failed to enqueue request: %v", err)
 		}
 
-		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "queued for retry"})
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+				"message": "Bonus Service unavailable",
+			})
 		return
 	}
 
