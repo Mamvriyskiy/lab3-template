@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -95,7 +94,7 @@ func (h *Handler) UpdateBonusDelete(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": "X-User-Name header is required"})
         return
     }
-    
+
     priceStr := c.Param("price")
 
     price, err := strconv.Atoi(priceStr)
