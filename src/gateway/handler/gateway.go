@@ -342,24 +342,8 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 
 	// Покупаем билет
 	status, body, _, err := forwardRequest(c, "POST", "http://ticket:8070/ticket", headers, bodyBytes)
-	if err != nil || status >= 400 {
-		// rollback
-		_, _, _, rollbackErr := forwardRequest(c, "POST", "http://ticket:8070/ticket/rollback", headers, bodyBytes)
-		if rollbackErr != nil {
-			log.Printf("Rollback failed: %v", rollbackErr)
-		}
-
-		// ставим в Redis очередь на повтор
-		if err := rollback.EnqueueRetry(rollback.RetryRequest{
-			Method:  "POST",
-			URL:     "http://ticket:8070/ticket",
-			Headers: headers,
-			Body:    bodyBytes,
-		}); err != nil {
-			log.Printf("Failed to enqueue request: %v", err)
-		}
-
-		c.JSON(http.StatusOK, gin.H{"status": "queued for retry"})
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -375,8 +359,24 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 		curlBouns := "http://bonus:8050/bonus/" + uid + "/" + strconv.Itoa(reqData.Price)
 		// Получаем данные с бонусного счета
 		statusBonus, bodyBonus, _, err := forwardRequest(c, "PATCH", curlBouns, headers, nil)
-		if err != nil {
-			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		if err != nil || status >= 400 {
+			// rollback
+			_, _, _, rollbackErr := forwardRequest(c, "POST", "http://ticket:8070/ticket/rollback", headers, bodyBytes)
+			if rollbackErr != nil {
+				log.Printf("Rollback failed: %v", rollbackErr)
+			}
+
+			// ставим в Redis очередь на повтор
+			if err := rollback.EnqueueRetry(rollback.RetryRequest{
+				Method:  "POST",
+				URL:     "http://ticket:8070/ticket",
+				Headers: headers,
+				Body:    bodyBytes,
+			}); err != nil {
+				log.Printf("Failed to enqueue request: %v", err)
+			}
+
+			c.JSON(http.StatusOK, gin.H{"status": "queued for retry"})
 			return
 		}
 
