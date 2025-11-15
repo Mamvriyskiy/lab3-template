@@ -15,17 +15,17 @@ type RetryRequest struct {
 	Body    []byte
 }
 
-var ctx = context.Background()
-var rdb *redis.Client
+var Ctx = context.Background()
+var Rdb *redis.Client
 
 func InitRedis() {
-	rdb = redis.NewClient(&redis.Options{
+	Rdb = redis.NewClient(&redis.Options{
 		Addr:     "redis:6379", // адрес Redis
 		Password: "",               // если есть пароль
 		DB:       0,                // база по умолчанию
 	})
 
-	_, err := rdb.Ping(ctx).Result()
+	_, err := Rdb.Ping(Ctx).Result()
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
@@ -38,5 +38,5 @@ func EnqueueRetry(req RetryRequest) error {
 		return err
 	}
 	// Добавляем в конец списка "retry_queue"
-	return rdb.RPush(ctx, "retry_queue", data).Err()
+	return Rdb.RPush(Ctx, "retry_queue", data).Err()
 }

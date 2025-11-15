@@ -7,10 +7,12 @@ import (
 	services "github.com/Mamvriyskiy/lab3-template/src/gateway/services"
 	server "github.com/Mamvriyskiy/lab3-template/src/server"
 	redis "github.com/Mamvriyskiy/lab3-template/src/gateway/rollback"
+	worker "github.com/Mamvriyskiy/lab3-template/src/gateway/rollback/worker"
 )
 
 func main() {
 	redis.InitRedis()
+	worker.StartRetryWorker()
 
 	services := services.NewServices()
 	handlers := handler.NewHandler(services)

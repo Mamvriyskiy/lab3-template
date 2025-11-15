@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func forwardRequest(c *gin.Context, method, targetURL string, headers map[string]string, body []byte) (int, []byte, http.Header, error) {
+func ForwardRequest(c *gin.Context, method, targetURL string, headers map[string]string, body []byte) (int, []byte, http.Header, error) {
 	if len(c.Request.URL.RawQuery) > 0 {
 		targetURL = fmt.Sprintf("%s?%s", targetURL, c.Request.URL.RawQuery)
 	}
@@ -50,7 +50,7 @@ func forwardRequest(c *gin.Context, method, targetURL string, headers map[string
 }
 
 func (h *Handler) GetInfoAboutFlight(c *gin.Context) {
-	status, body, headers, err := forwardRequest(c, "GET", "http://flight:8060/flight", nil, nil)
+	status, body, headers, err := ForwardRequest(c, "GET", "http://flight:8060/flight", nil, nil)
 	if err != nil {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
@@ -68,7 +68,7 @@ func (h *Handler) GetInfoAboutUserTicket(c *gin.Context) {
 
 	// 1️⃣ Запрашиваем билет
 	ticketURL := "http://ticket:8070/ticket/" + ticketUid
-	status, body, _, err := forwardRequest(c, "GET", ticketURL, nil, nil)
+	status, body, _, err := ForwardRequest(c, "GET", ticketURL, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -87,7 +87,7 @@ func (h *Handler) GetInfoAboutUserTicket(c *gin.Context) {
 
 	// 2️⃣ Запрашиваем данные о рейсе
 	flightURL := "http://flight:8060/flight/" + ticket.FlightNumber
-	flightStatus, flightBody, _, err := forwardRequest(c, "GET", flightURL, nil, nil)
+	flightStatus, flightBody, _, err := ForwardRequest(c, "GET", flightURL, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -126,7 +126,7 @@ func (h *Handler) GetInfoAboutAllUserTickets(c *gin.Context) {
 	}
 
 	headers := map[string]string{"X-User-Name": username}
-	status, body, respHeaders, err := forwardRequest(c, "GET", "http://ticket:8070/tickets", headers, nil)
+	status, body, respHeaders, err := ForwardRequest(c, "GET", "http://ticket:8070/tickets", headers, nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -148,7 +148,7 @@ func (h *Handler) GetInfoAboutAllUserTickets(c *gin.Context) {
 			continue
 		}
 		flightURL := "http://flight:8060/flight/" + ticket.FlightNumber
-		flightStatus, flightBody, _, err := forwardRequest(c, "GET", flightURL, nil, nil)
+		flightStatus, flightBody, _, err := ForwardRequest(c, "GET", flightURL, nil, nil)
 		if err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 			return
@@ -188,11 +188,11 @@ func (h *Handler) GetInfoAboutUserPrivilege(c *gin.Context) {
 	}
 
 	headers := map[string]string{"X-User-Name": username}
-	status, body, respHeaders, err := forwardRequest(c, "GET", "http://bonus:8050/privilege", headers, nil)
+	status, body, respHeaders, err := ForwardRequest(c, "GET", "http://bonus:8050/privilege", headers, nil)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
-        	"message": "Bonus Service unavailable",
-    	})
+			"message": "Bonus Service unavailable",
+		})
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *Handler) GetInfoAboutUser(c *gin.Context) {
 	}
 
 	headers := map[string]string{"X-User-Name": username}
-	status, body, respHeaders, err := forwardRequest(c, "GET", "http://ticket:8070/tickets", headers, nil)
+	status, body, respHeaders, err := ForwardRequest(c, "GET", "http://ticket:8070/tickets", headers, nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -237,7 +237,7 @@ func (h *Handler) GetInfoAboutUser(c *gin.Context) {
 			continue
 		}
 		flightURL := "http://flight:8060/flight/" + ticket.FlightNumber
-		flightStatus, flightBody, _, err := forwardRequest(c, "GET", flightURL, nil, nil)
+		flightStatus, flightBody, _, err := ForwardRequest(c, "GET", flightURL, nil, nil)
 		if err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 			return
@@ -265,10 +265,10 @@ func (h *Handler) GetInfoAboutUser(c *gin.Context) {
 		})
 	}
 
-	status, BonusBody, respHeaders, err := forwardRequest(c, "GET", "http://bonus:8050/privilege", headers, nil)
+	status, BonusBody, respHeaders, err := ForwardRequest(c, "GET", "http://bonus:8050/privilege", headers, nil)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"tickets": tickets,
+			"tickets":   tickets,
 			"privilege": gin.H{},
 		})
 		return
@@ -346,7 +346,7 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 	}
 
 	// Покупаем билет
-	status, body, _, err := forwardRequest(c, "POST", "http://ticket:8070/ticket", headers, bodyBytes)
+	status, body, _, err := ForwardRequest(c, "POST", "http://ticket:8070/ticket", headers, bodyBytes)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -363,10 +363,10 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 	if reqData.PaidFromBalance {
 		curlBouns := "http://bonus:8050/bonus/" + uid + "/" + strconv.Itoa(reqData.Price)
 		// Получаем данные с бонусного счета
-		statusBonus, bodyBonus, _, err := forwardRequest(c, "PATCH", curlBouns, headers, nil)
+		statusBonus, bodyBonus, _, err := ForwardRequest(c, "PATCH", curlBouns, headers, nil)
 		if err != nil || status >= 400 {
 			// rollback
-			// _, _, _, rollbackErr := forwardRequest(c, "DELETE", "http://ticket:8070/ticket/", headers, bodyBytes)
+			// _, _, _, rollbackErr := ForwardRequest(c, "DELETE", "http://ticket:8070/ticket/", headers, bodyBytes)
 			// if rollbackErr != nil {
 			// 	log.Printf("Rollback failed: %v", rollbackErr)
 			// }
@@ -399,10 +399,10 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 	}
 
 	curlUpdateBouns := "http://bonus:8050/bonusUpdate/" + uid + "/" + strconv.Itoa(reqData.Price)
-	_, bodyBonus, _, err := forwardRequest(c, "PATCH", curlUpdateBouns, headers, nil)
+	_, bodyBonus, _, err := ForwardRequest(c, "PATCH", curlUpdateBouns, headers, nil)
 	if err != nil || status >= 400 {
 		// rollback
-		// _, _, _, rollbackErr := forwardRequest(c, "DELETE", "http://ticket:8070/ticket/", headers, bodyBytes)
+		// _, _, _, rollbackErr := ForwardRequest(c, "DELETE", "http://ticket:8070/ticket/", headers, bodyBytes)
 		// if rollbackErr != nil {
 		// 	log.Printf("Rollback failed: %v", rollbackErr)
 		// }
@@ -418,8 +418,8 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusServiceUnavailable, gin.H{
-				"message": "Bonus Service unavailable",
-			})
+			"message": "Bonus Service unavailable",
+		})
 		return
 	}
 
@@ -433,12 +433,11 @@ func (h *Handler) BuyTicketUser(c *gin.Context) {
 		return
 	}
 	privilege.Balance = bonusResp.UpdatedBalance
-	fmt.Println(privilege.Balance)
 
 	flightNumber := reqData.FlightNumber
 
 	flightURL := "http://flight:8060/flight/" + flightNumber
-	flightStatus, flightBody, _, err := forwardRequest(c, "GET", flightURL, nil, nil)
+	flightStatus, flightBody, _, err := ForwardRequest(c, "GET", flightURL, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -500,7 +499,7 @@ func (h *Handler) DeleteTicketUSer(c *gin.Context) {
 	headers := map[string]string{"X-User-Name": username}
 
 	ticketURL := "http://ticket:8070/ticket/" + ticketUid
-	status, body, _, err := forwardRequest(c, "PATCH", ticketURL, nil, nil)
+	status, body, _, err := ForwardRequest(c, "PATCH", ticketURL, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -511,9 +510,18 @@ func (h *Handler) DeleteTicketUSer(c *gin.Context) {
 		return
 	}
 
-	print("Списание бонусов")
 	curlUpdateBouns := "http://bonus:8050/bonusUpdateDelete/" + strconv.Itoa(150)
-	_, _, _, err = forwardRequest(c, "DELETE", curlUpdateBouns, headers, nil)
+	_, _, _, err = ForwardRequest(c, "DELETE", curlUpdateBouns, headers, nil)
+	if err != nil || status >= 400 {
+		// ставим в Redis очередь на повтор
+		if err := rollback.EnqueueRetry(rollback.RetryRequest{
+			Method:  "DELETE",
+			URL:     "http://bonus:8050/bonusUpdateDelete/" + strconv.Itoa(150),
+			Headers: headers,
+		}); err != nil {
+			log.Printf("Failed to enqueue request: %v", err)
+		}
+	}
 
 	c.Status(http.StatusNoContent)
 }
